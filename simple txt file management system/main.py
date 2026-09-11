@@ -6,12 +6,10 @@ def file_create():
     path = Path("Home")/rawPath
     # fileName = input("Enter file name: ")
     # dirName = input("You want to make this file in which directory? ")
-
     # if dirName.lower() == "home":
     #     path = Path("Home")/f"{fileName}.txt"
     # else:
     #     path = Path("Home")/dirName/f"{fileName}.txt"
-
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         f = open(path, "x")
@@ -19,6 +17,15 @@ def file_create():
         print(f"{path} is created.")
     except FileExistsError:
         print("File already exist")
+
+def dir_create():
+    rawPath = input("Enter the path of directory: ")
+    path = Path("Home") / rawPath
+    try:
+        path.mkdir(parents=True, exist_ok=False)
+        print(f"{path} is created.")
+    except FileExistsError:
+        print("Directory already exists")
         
 running = True
 
@@ -30,7 +37,7 @@ while running:
 2. Read a file
 3. Update an exsisting file
 4. Overwrite a file
-5. Delete a file or directory
+5. Delete a file
 6. Make a directory
 7. Delete directory
 8. List directory content
@@ -67,36 +74,36 @@ while running:
         except FileNotFoundError:
             print("File not found")
     elif task == 5:
-        quest = input("What do you want to delete, file or directory")
-        if quest.lower() == "file":
-            fileName = input("Enter file name: ")
-            try:
-                os.remove(f"Home/{name}.txt")
-                print(f"{name}.txt is deleted")
-            except FileNotFoundError:
-                print("File not found")
+        rawPath = input("Enter the path of file: ")
+        path = Path("Home")/rawPath
+        try:
+            os.remove(path)
+            print(f"{path} is deleted")
+        except FileNotFoundError:
+            print("File not found")
     elif task == 6:
-        nameDir = input("Name the directory: ")
-        try:
-            os.mkdir(f"Home/{nameDir}")
-        except FileExistsError:
-            print("Directory already exists")
+        dir_create()
     elif task == 7:
-        nameDir = input("Enter directory name: ")
+        rawPath = input("Enter the path of directory: ")
+        path = Path("Home")/rawPath
         try:
-            os.rmdir(f"Home/{nameDir}")
-            print("Directory deleted.")
+            path.rmdir()
+            print(f"{path} deleted.")
+        except FileNotFoundError:
+            print(f"{path} does not exist.")
+        except OSError:
+            print(f"{path} is not empty.")            
+    elif task == 8:
+        rawPath = input("Enter the path of directory: ")
+        path = Path("Home")/rawPath
+        try:
+            print(f"Showing {path}")
+            for item in path.iterdir():
+                print(item)
         except FileNotFoundError:
             print("Directory doesn't exist.")
-        except OSError:
-            print("Directory is not empty!")
-    elif task == 8:
-        nameDir = input("Enter directory name: ")
-        try:
-            print(f"Showing {nameDir}")
-            print(os.listdir(nameDir))
-        except FileNotFoundError:
-            print("Directory doesn't exist")
+        except NotADirectoryError:
+            print(f"{path} is not a directory.")
 
     elif task == 10:
         print("Quitting program")
