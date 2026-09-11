@@ -1,20 +1,25 @@
 import os
+import pathlib as Path
 
 def file_create():
-    fileName = input("Enter file name: ")
-    dirName = input("You want to make this file in which directory? ")
-    if dirName != "Home" or "home":
-        f = open(f"Home/{dirName}/{fileName}.txt", "x")
+    rawPath = input("Enter the path of file.")
+    path = path("Home")/rawPath
+    # fileName = input("Enter file name: ")
+    # dirName = input("You want to make this file in which directory? ")
+
+    # if dirName.lower() == "home":
+    #     path = Path("Home")/f"{fileName}.txt"
+    # else:
+    #     path = Path("Home")/dirName/f"{fileName}.txt"
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        f = open(path, "x")
         f.close()
-        print(f"{fileName}.txt is created in {dirName} directory.")
-    else:
-        f = open(f"Home/{fileName}.txt", "x")
-        f.close() 
-
-
-
-
-
+        print(f"{path} is created.")
+    except FileExistsError:
+        print("File already exist")
+        
 running = True
 
 while running:
@@ -25,7 +30,7 @@ while running:
 2. Read a file
 3. Update an exsisting file
 4. Overwrite a file
-5. Delete a file
+5. Delete a file or directory
 6. Make a directory
 7. Delete directory
 8. List directory content
@@ -62,12 +67,14 @@ while running:
         except FileNotFoundError:
             print("File not found")
     elif task == 5:
-        name = input("Enter file name: ")
-        try:
-            os.remove(f"Home/{name}.txt")
-            print(f"{name}.txt is deleted")
-        except FileNotFoundError:
-            print("File not found")
+        quest = input("What do you want to delete, file or directory")
+        if quest.lower() == "file":
+            fileName = input("Enter file name: ")
+            try:
+                os.remove(f"Home/{name}.txt")
+                print(f"{name}.txt is deleted")
+            except FileNotFoundError:
+                print("File not found")
     elif task == 6:
         nameDir = input("Name the directory: ")
         try:
