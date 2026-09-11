@@ -1,9 +1,9 @@
 import os
-import pathlib as Path
+from pathlib import Path
 
 def file_create():
-    rawPath = input("Enter the path of file.")
-    path = path("Home")/rawPath
+    rawPath = input("Enter the path of file: ")
+    path = Path("Home")/rawPath
     # fileName = input("Enter file name: ")
     # dirName = input("You want to make this file in which directory? ")
 
