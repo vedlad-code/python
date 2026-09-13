@@ -12,7 +12,7 @@ def file_create():
         f.close()
         print(f"{path} is created.")
     except FileExistsError:
-        print("File already exist")
+        print("File already exist.")
 
 def dir_create():
     rawPath = input("Enter the path of directory: ")
@@ -21,7 +21,7 @@ def dir_create():
         path.mkdir(parents=True, exist_ok=False)
         print(f"{path} is created.")
     except FileExistsError:
-        print("Directory already exists")
+        print("Directory already exists.")
 
 def read_file():
     rawPath = input("Enter the path of file: ")
@@ -32,7 +32,7 @@ def read_file():
             content = f.read()
             print(content)
     except FileNotFoundError:
-        print("File not found")
+        print("File not found.")
 
 def upd_file():
     rawPath = input("Enter the path of file: ")
@@ -41,9 +41,9 @@ def upd_file():
         content = input("Write your content: ")
         with open(path, "a") as f:
             f.write(content)
-        print(f"{path} is updated")
+        print(f"{path} is updated.")
     except FileNotFoundError:
-        print("File not found")
+        print("File not found.")
 
 def del_file():
     rawPath = input("Enter the path of file: ")
@@ -52,7 +52,7 @@ def del_file():
         os.remove(path)
         print(f"{path} is deleted")
     except FileNotFoundError:
-        print("File not found")
+        print("File not found.")
 
 def del_dir():
     rawPath = input("Enter the path of directory: ")
@@ -77,9 +77,9 @@ def lst_dir():
     except NotADirectoryError:
         print(f"{path} is not a directory.")
 
-def view_image():
-    rawPath = input("Enter the path of image: ")
-    path = Path("Home")/rawPath
+def open_file():
+    rawPath = input("Enter the path of file: ")
+    path = Path("Home") / rawPath
     try:
         if sys.platform == "darwin":
             subprocess.run(["open", path])
@@ -87,8 +87,9 @@ def view_image():
             os.startfile(path)
         else:
             subprocess.run(["xdg-open", path])
+        print(f"Opening {path}")
     except FileNotFoundError:
-        print("Image not found.")
+        print("File not found.")
 
 
 running = True
@@ -105,11 +106,11 @@ while running:
 5. Make a directory
 6. Delete directory
 7. List directory content
-8. View image
+8. Open a file
 9. Quit
 : '''))
     except ValueError:
-        print("please enter valid number")
+        print("please enter valid number.")
         continue
 
     if task == 1:
@@ -127,10 +128,10 @@ while running:
     elif task == 7:
         lst_dir()
     elif task == 8:
-        view_image()
+        open_file()
     elif task == 9:
-        print("Quitting program")
+        print("Quitting program.")
         print("-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-")
         break
     else:
-         print("Invalid input")
+         print("Invalid input.")
