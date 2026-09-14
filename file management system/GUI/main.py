@@ -11,6 +11,7 @@ from pathlib import Path
 from PySide6.QtCore import (
     Qt,
     QDir,
+    QMimeData,
     QModelIndex,
     QObject,
     QSize,
@@ -293,7 +294,7 @@ def apply_dark_palette(app: QApplication):
 
 EXTENSION_COLORS = {
     "image": ("#5fa8d3", {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".tiff", ".heic"}),
-    "code": ("#7fb069", {".py", ".js", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".h", ".java", ".rs", ".go", ".rb", ".sh", ".json", ".yaml", ".yml", ".html", ".css"}),
+    "code": ("#7fb069", {".py", ".js", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".java", ".rs", ".go", ".rb", ".sh", ".json", ".yaml", ".yml", ".html", ".css", ".php"}),
     "doc": ("#c9895a", {".txt", ".md", ".doc", ".docx", ".pdf", ".rtf", ".pages"}),
     "archive": ("#a58fc9", {".zip", ".tar", ".gz", ".rar", ".7z"}),
     "video": ("#d3705f", {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}),
@@ -307,6 +308,37 @@ CODE_EXTENSIONS = EXTENSION_COLORS["code"][1]
 TEXT_PREVIEW_EXTENSIONS = CODE_EXTENSIONS | {".txt", ".md", ".csv", ".log", ".ini", ".cfg"}
 THUMBNAIL_DECODE_SIZE = 256
 ICON_RENDER_SIZE = 64
+CUT_MARKER_MIME = "application/x-desktop-file-manager-cut"
+
+# Per-language badges: a short monogram on a swatch in each language's
+# familiar brand color, e.g. Python's blue, Rust's rust-orange. These
+# are original letter-mark badges, not reproductions of any official
+# logo artwork, so a Python file reads as "a Python file" at a glance
+# without redrawing anyone's trademarked icon.
+LANGUAGE_BADGES = {
+    ".py": ("PY", "#3776ab", "#ffd43b"),
+    ".js": ("JS", "#f0db4f", "#1c1e21"),
+    ".jsx": ("JSX", "#61dafb", "#1c1e21"),
+    ".ts": ("TS", "#3178c6", "#ffffff"),
+    ".tsx": ("TSX", "#3178c6", "#ffffff"),
+    ".c": ("C", "#a8b9cc", "#1c1e21"),
+    ".h": ("H", "#a8b9cc", "#1c1e21"),
+    ".cpp": ("C++", "#00599c", "#ffffff"),
+    ".cc": ("C++", "#00599c", "#ffffff"),
+    ".cxx": ("C++", "#00599c", "#ffffff"),
+    ".hpp": ("H++", "#00599c", "#ffffff"),
+    ".java": ("JAVA", "#e76f00", "#ffffff"),
+    ".rs": ("RS", "#dea584", "#1c1e21"),
+    ".go": ("GO", "#00acd7", "#ffffff"),
+    ".rb": ("RB", "#cc342d", "#ffffff"),
+    ".sh": ("SH", "#4eaa25", "#ffffff"),
+    ".json": ("{ }", "#cbcb41", "#1c1e21"),
+    ".yaml": ("YML", "#cb171e", "#ffffff"),
+    ".yml": ("YML", "#cb171e", "#ffffff"),
+    ".html": ("<>", "#e34c26", "#ffffff"),
+    ".css": ("CSS", "#264de4", "#ffffff"),
+    ".php": ("PHP", "#777bb4", "#ffffff"),
+}
 
 
 def color_for_extension(suffix: str) -> str:
@@ -501,6 +533,18 @@ class IconFactory:
         key = ("audio", size, color)
         if key not in cls._shape_cache:
             cls._shape_cache[key] = QIcon(cls._render_audio(size, color))
+        return cls._shape_cache[key]
+
+    @classmethod
+    def language_badge_icon(cls, size=None, ext=None):
+        size = size or ICON_RENDER_SIZE
+        badge = LANGUAGE_BADGES.get(ext)
+        if badge is None:
+            return None
+        label, bg_hex, fg_hex = badge
+        key = ("lang_badge", size, ext)
+        if key not in cls._shape_cache:
+            cls._shape_cache[key] = QIcon(cls._render_language_badge(size, label, bg_hex, fg_hex))
         return cls._shape_cache[key]
 
     @staticmethod
@@ -869,6 +913,71 @@ class IconFactory:
         painter.end()
         return pixmap
 
+    @staticmethod
+    def _render_language_badge(size, label, bg_hex, fg_hex):
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        fold = size * 0.22
+        left = size * 0.20
+        right = size * 0.80
+        top = size * 0.10
+        bottom = size * 0.90
+
+        page = QPainterPath()
+        page.moveTo(left, top)
+        page.lineTo(right - fold, top)
+        page.lineTo(right, top + fold)
+        page.lineTo(right, bottom)
+        page.lineTo(left, bottom)
+        page.closeSubpath()
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#2c2e33"))
+        painter.drawPath(page)
+
+        fold_path = QPainterPath()
+        fold_path.moveTo(right - fold, top)
+        fold_path.lineTo(right, top + fold)
+        fold_path.lineTo(right - fold, top + fold)
+        fold_path.closeSubpath()
+        painter.setBrush(QColor(bg_hex))
+        painter.drawPath(fold_path)
+
+        badge_w = (right - left) - size * 0.08
+        badge_h = size * 0.28
+        badge_rect = QRectF(
+            left + size * 0.04,
+            top + (bottom - top) / 2 - badge_h / 2 + size * 0.04,
+            badge_w,
+            badge_h,
+        )
+        painter.setBrush(QColor(bg_hex))
+        painter.drawRoundedRect(badge_rect, size * 0.045, size * 0.045)
+
+        font = QFont()
+        font.setBold(True)
+        font_size = max(int(size * 0.17), 6)
+        font.setPixelSize(font_size)
+        metrics = QFontMetrics(font)
+        text_width = metrics.horizontalAdvance(label)
+        while text_width > badge_w * 0.82 and font_size > 5:
+            font_size -= 1
+            font.setPixelSize(font_size)
+            metrics = QFontMetrics(font)
+            text_width = metrics.horizontalAdvance(label)
+
+        painter.setFont(font)
+        painter.setPen(QColor(fg_hex))
+        text_x = badge_rect.center().x() - text_width / 2
+        text_y = badge_rect.center().y() + (metrics.ascent() - metrics.descent()) / 2
+        painter.drawText(QPointF(text_x, text_y), label)
+
+        painter.end()
+        return pixmap
+
 
 class IconOverrideProxyModel(QSortFilterProxyModel):
     """Swaps the file system model's native icons for real content
@@ -913,6 +1022,10 @@ class IconOverrideProxyModel(QSortFilterProxyModel):
                 return IconFactory.video_placeholder_icon(size=ICON_RENDER_SIZE, color=color)
             elif suffix in AUDIO_EXTENSIONS:
                 return IconFactory.audio_icon(size=ICON_RENDER_SIZE, color=color)
+            elif suffix in LANGUAGE_BADGES:
+                icon = IconFactory.language_badge_icon(size=ICON_RENDER_SIZE, ext=suffix)
+                if icon is not None:
+                    return icon
             elif suffix in TEXT_PREVIEW_EXTENSIONS:
                 icon = IconFactory.thumbnail_icon(path, mtime, ICON_RENDER_SIZE, color, "text")
                 if icon is not None:
@@ -1072,6 +1185,63 @@ class Breadcrumb(QWidget):
 # Main window
 # ----------------------------------------------------------------------
 
+class FileListView(QListView):
+    """A QListView that supports drag and drop: dragging items out to
+    other apps, dragging files in from outside the app (which copies
+    them into the current folder), and dragging items onto a folder
+    shown in the view (which moves them into it)."""
+
+    def __init__(self, manager, parent=None):
+        super().__init__(parent)
+        self.manager = manager
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setDragDropMode(QAbstractItemView.DragDrop)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        mime = event.mimeData()
+        if not mime.hasUrls():
+            super().dropEvent(event)
+            return
+
+        sources = [Path(url.toLocalFile()) for url in mime.urls() if url.isLocalFile()]
+        if not sources:
+            event.ignore()
+            return
+
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+        target_index = self.indexAt(pos)
+        target_dir = self.manager.current_path
+        if target_index.isValid():
+            source_index = self.manager.proxy_model.mapToSource(target_index)
+            file_info = self.manager.fs_model.fileInfo(source_index)
+            if file_info.isDir():
+                target_dir = Path(file_info.absoluteFilePath())
+
+        # The proposed drop action is an unreliable way to tell a
+        # reorganizing drag (within this app, which should move a
+        # file) apart from a drag that arrived from somewhere else
+        # like Finder (which should copy, leaving the original where
+        # it was) -- different platforms default it differently.
+        # event.source() is precise: it's this same widget only when
+        # the drag started here.
+        move = event.source() is self
+        self.manager.handle_files_dropped(sources, target_dir, move)
+        event.acceptProposedAction()
+
+
 class FileManager(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1092,6 +1262,10 @@ class FileManager(QMainWindow):
         self.fs_model = QFileSystemModel()
         self.fs_model.setRootPath(QDir.rootPath())
         self.fs_model.setFilter(QDir.AllEntries | QDir.NoDotAndDotDot)
+        # QFileSystemModel defaults to read-only, which withholds the
+        # "drag enabled" flag from every file -- without this, a drag
+        # never even starts when you click and drag an icon.
+        self.fs_model.setReadOnly(False)
         self.fs_model.directoryLoaded.connect(self._on_directory_loaded)
 
         self.proxy_model = IconOverrideProxyModel()
@@ -1134,7 +1308,7 @@ class FileManager(QMainWindow):
         self.breadcrumb = Breadcrumb(self._navigate_to)
         crumb_layout.addWidget(self.breadcrumb)
 
-        self.view = QListView()
+        self.view = FileListView(self)
         self.view.setModel(self.proxy_model)
         self.view.setViewMode(QListView.IconMode)
         self.view.setFlow(QListView.LeftToRight)
@@ -1166,7 +1340,13 @@ class FileManager(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
+        QApplication.clipboard().dataChanged.connect(self._update_paste_enabled)
+        self._update_paste_enabled()
+
         self._install_shortcuts()
+
+    def _update_paste_enabled(self):
+        self.paste_btn.setEnabled(self._clipboard_has_files())
 
     def _build_toolbar(self):
         bar = QWidget()
@@ -1201,6 +1381,11 @@ class FileManager(QMainWindow):
         self.new_folder_btn.setToolTip("New folder")
         self.new_folder_btn.clicked.connect(self._create_folder)
 
+        self.paste_btn = QToolButton()
+        self.paste_btn.setText("Paste")
+        self.paste_btn.setToolTip("Paste")
+        self.paste_btn.clicked.connect(self._paste)
+
         layout.addWidget(self.back_btn)
         layout.addWidget(self.forward_btn)
         layout.addWidget(self.up_btn)
@@ -1212,6 +1397,7 @@ class FileManager(QMainWindow):
 
         layout.addWidget(self.view_toggle_btn)
         layout.addWidget(self.new_folder_btn)
+        layout.addWidget(self.paste_btn)
 
         layout.addStretch(1)
 
@@ -1221,6 +1407,9 @@ class FileManager(QMainWindow):
         QShortcut(QKeySequence("Backspace"), self, activated=self._go_up)
         QShortcut(QKeySequence("Ctrl+Shift+N"), self, activated=self._create_folder)
         QShortcut(QKeySequence.Delete, self, activated=self._delete_selected)
+        QShortcut(QKeySequence.Copy, self, activated=self._copy_selected)
+        QShortcut(QKeySequence.Cut, self, activated=self._cut_selected)
+        QShortcut(QKeySequence.Paste, self, activated=self._paste)
 
     # -- navigation ---------------------------------------------------
 
@@ -1368,6 +1557,115 @@ class FileManager(QMainWindow):
                 QMessageBox.warning(self, "Could not delete", f"{path.name}: {exc}")
         self._update_status()
 
+    # -- clipboard (copy / cut / paste) ---------------------------------
+
+    def _clipboard_set(self, paths, cut: bool):
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(str(p)) for p in paths])
+        if cut:
+            mime.setData(CUT_MARKER_MIME, b"1")
+        QApplication.clipboard().setMimeData(mime)
+        verb = "Cut" if cut else "Copied"
+        noun = "item" if len(paths) == 1 else "items"
+        self.status_bar.showMessage(f"{verb} {len(paths)} {noun}", 2500)
+
+    def _copy_selected(self):
+        paths = self._selected_paths()
+        if paths:
+            self._clipboard_set(paths, cut=False)
+
+    def _cut_selected(self):
+        paths = self._selected_paths()
+        if paths:
+            self._clipboard_set(paths, cut=True)
+
+    def _clipboard_has_files(self) -> bool:
+        mime = QApplication.clipboard().mimeData()
+        return mime is not None and mime.hasUrls()
+
+    def _paste(self):
+        mime = QApplication.clipboard().mimeData()
+        if mime is None or not mime.hasUrls():
+            return
+
+        is_cut = mime.hasFormat(CUT_MARKER_MIME)
+        sources = [Path(url.toLocalFile()) for url in mime.urls() if url.isLocalFile()]
+        pasted_any = False
+
+        for src in sources:
+            if not src.exists():
+                continue
+            if is_cut and src.parent.resolve() == self.current_path.resolve():
+                continue  # already here -- nothing to do
+            dest = self._unique_destination(self.current_path / src.name)
+            try:
+                if is_cut:
+                    shutil.move(str(src), str(dest))
+                elif src.is_dir():
+                    shutil.copytree(src, dest)
+                else:
+                    shutil.copy2(src, dest)
+                pasted_any = True
+            except OSError as exc:
+                QMessageBox.warning(self, "Could not paste", f"{src.name}: {exc}")
+
+        if is_cut and pasted_any:
+            QApplication.clipboard().clear()  # a cut is a one-time move, like Finder
+        if pasted_any:
+            self.status_bar.showMessage("Paste complete", 2000)
+        self._update_status()
+
+    @staticmethod
+    def _unique_destination(dest: Path) -> Path:
+        if not dest.exists():
+            return dest
+        stem, suffix = dest.stem, dest.suffix
+        parent = dest.parent
+        candidate = parent / f"{stem} copy{suffix}"
+        counter = 2
+        while candidate.exists():
+            candidate = parent / f"{stem} copy {counter}{suffix}"
+            counter += 1
+        return candidate
+
+    # -- drag and drop ----------------------------------------------------
+
+    def handle_files_dropped(self, sources, target_dir: Path, move: bool):
+        """Called by the view when files are dropped on it -- either
+        dragged in from within the app (move into a folder) or dragged
+        in from outside, like the desktop or another Finder window
+        (copy into the current folder)."""
+        target_dir = target_dir.resolve()
+        any_success = False
+
+        for src in sources:
+            if not src.exists():
+                continue
+            src_resolved = src.resolve()
+            if src_resolved == target_dir or src_resolved.parent == target_dir:
+                continue  # dropped on itself or its own parent -- no-op
+            try:
+                if target_dir.is_relative_to(src_resolved):
+                    continue  # can't move/copy a folder into its own descendant
+            except AttributeError:
+                pass  # Python < 3.9 doesn't have is_relative_to; skip the guard
+
+            dest = self._unique_destination(target_dir / src.name)
+            try:
+                if move:
+                    shutil.move(str(src), str(dest))
+                elif src.is_dir():
+                    shutil.copytree(src, dest)
+                else:
+                    shutil.copy2(src, dest)
+                any_success = True
+            except OSError as exc:
+                QMessageBox.warning(self, "Could not move file", f"{src.name}: {exc}")
+
+        if any_success:
+            self.status_bar.showMessage("Move complete" if move else "Copy complete", 2000)
+        self._update_status()
+
     def _reveal_in_terminal_or_open(self, path: Path):
         if path.is_dir():
             self._navigate_to(path)
@@ -1389,6 +1687,25 @@ class FileManager(QMainWindow):
         rename_action.triggered.connect(self._rename_selected)
         rename_action.setEnabled(len(selected) == 1)
         menu.addAction(rename_action)
+
+        menu.addSeparator()
+
+        copy_action = QAction("Copy", self)
+        copy_action.triggered.connect(self._copy_selected)
+        copy_action.setEnabled(bool(selected))
+        menu.addAction(copy_action)
+
+        cut_action = QAction("Cut", self)
+        cut_action.triggered.connect(self._cut_selected)
+        cut_action.setEnabled(bool(selected))
+        menu.addAction(cut_action)
+
+        paste_action = QAction("Paste", self)
+        paste_action.triggered.connect(self._paste)
+        paste_action.setEnabled(self._clipboard_has_files())
+        menu.addAction(paste_action)
+
+        menu.addSeparator()
 
         delete_action = QAction("Delete", self)
         delete_action.triggered.connect(self._delete_selected)
