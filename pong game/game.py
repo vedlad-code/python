@@ -7,19 +7,22 @@ screen_height = 700
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Pong")
 
-# paddle
+# player_paddle
 white = "#ffffff"
-paddle = pygame.Rect(12, 350, 7, 50)
-paddle.centery = screen.get_rect().centery
+player_paddle = pygame.Rect(12, 350, 7, 50)
+player_paddle.centery = screen.get_rect().centery
 paddle_speed = 8
-# paddle end
+opp_paddle = pygame.Rect(0, 0, 7, 50)
+opp_paddle.right = screen_width - 12
+opp_paddle.centery = screen_height // 2
+paddle_dict = {"player": player_paddle, "opponent" : opp_paddle}
+# player_paddle end
 
 # ball
-ball_x = 600
-ball_y = 350
-ball_radius = 7
-ball_speed_x = 3.5
-ball_speed_y = 3.5
+ball = pygame.Rect(0, 0, 14, 14)
+ball.center = (screen_width // 2, screen_height // 2)
+ball_speed_x = -7
+ball_speed_y = 0
 # ball end
 
 clock = pygame.time.Clock()
@@ -27,29 +30,50 @@ running = True
 
 while running:
     # updates
-    # paddle movements
+    player_dy = 0
     keys = pygame.key.get_pressed()
+    # player paddle movements
     if keys[pygame.K_w]:
-        paddle.y -= paddle_speed
+        player_dy -= paddle_speed
     if keys[pygame.K_s]:
-        paddle.y += paddle_speed
-    if paddle.top < 0:
-        paddle.top = 1
-    if paddle.bottom > 700:
-        paddle.bottom = 699
-    # paddle movements end
+        player_dy += paddle_speed
+    player_paddle.y += player_dy
+    if player_paddle.top < 0:
+        player_paddle.top = 0
+    if player_paddle.bottom > screen_height:
+        player_paddle.bottom = screen_height
+    # player paddle movements end
+    # opponet paddle movements
+    if keys[pygame.K_UP]:
+        opp_paddle.y -= paddle_speed
+    if keys[pygame.K_DOWN]:
+        opp_paddle.y += paddle_speed
+    if opp_paddle.top < 0:
+        opp_paddle.top = 0
+    if opp_paddle.bottom > screen_height:
+        opp_paddle.bottom = screen_height
+    # opponent paddle movements end
 
     # ball movements
-    ball_x += ball_speed_x
-    ball_y += ball_speed_y
-    if ball_x < 0:
+    ball.x += ball_speed_x
+    ball.y += ball_speed_y
+    if ball.right > screen_width:
         ball_speed_x *= -1
-    if ball_x > screen_width:
-        ball_speed_x *= -1
-    if ball_y < 0:
+    if ball.top < 0 or ball.bottom > screen_height:
         ball_speed_y *= -1
-    if ball_y > screen_height:
-        ball_speed_y *= -1
+    # collision checks
+    collision = ball.collidedict(paddle_dict, True)
+    if collision:
+        key, rect_hit = collision
+        if key == "player" or key == "opponent":
+            ball_speed_x *= -1
+            if player_dy * ball_speed_y > 0:
+                pass
+            if player_dy * ball_speed_y < 0:
+                pass
+        # print(f"Collided with: {key}")
+    # collision checks end
+
     # updates end
 
     # events
@@ -60,8 +84,10 @@ while running:
 
     # draw
     screen.fill(("#101010"))
-    pygame.draw.rect(screen, white, paddle)
-    pygame.draw.circle(screen, white, (ball_x, ball_y), ball_radius)
+    pygame.draw.rect(screen, white, player_paddle)
+    pygame.draw.ellipse(screen, white, ball)
+    pygame.draw.rect(screen, white, opp_paddle)
+    # pygame.draw.circle(screen, white, (ball_x, ball_y), ball_radius)
     pygame.display.flip()
 
     clock.tick(60)
