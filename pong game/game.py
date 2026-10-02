@@ -11,7 +11,7 @@ pygame.display.set_caption("Pong")
 white = "#ffffff"
 player_paddle = pygame.Rect(12, 350, 7, 50)
 player_paddle.centery = screen.get_rect().centery
-paddle_speed = 8
+paddle_speed = 12
 opp_paddle = pygame.Rect(0, 0, 7, 50)
 opp_paddle.right = screen_width - 12
 opp_paddle.centery = screen_height // 2
@@ -23,6 +23,8 @@ ball = pygame.Rect(0, 0, 14, 14)
 ball.center = (screen_width // 2, screen_height // 2)
 ball_speed_x = -7
 ball_speed_y = 0
+min_speed_y = 1
+max_speed_y = 12
 # ball end
 
 clock = pygame.time.Clock()
@@ -40,8 +42,10 @@ while running:
     player_paddle.y += player_dy
     if player_paddle.top < 0:
         player_paddle.top = 0
+        player_dy = 0
     if player_paddle.bottom > screen_height:
         player_paddle.bottom = screen_height
+        player_dy = 0
     # player paddle movements end
     # opponet paddle movements
     if keys[pygame.K_UP]:
@@ -59,18 +63,32 @@ while running:
     ball.y += ball_speed_y
     if ball.right > screen_width:
         ball_speed_x *= -1
+    if ball.left < 0:   #temp condn
+        ball_speed_x *= -1
     if ball.top < 0 or ball.bottom > screen_height:
         ball_speed_y *= -1
     # collision checks
     collision = ball.collidedict(paddle_dict, True)
     if collision:
+        print("hit", ball.left, player_paddle.right)
         key, rect_hit = collision
         if key == "player" or key == "opponent":
             ball_speed_x *= -1
-            if player_dy * ball_speed_y > 0:
-                pass
-            if player_dy * ball_speed_y < 0:
-                pass
+            if player_dy * ball_speed_y > 0:              # same direction: faster
+                if ball_speed_y > 0:
+                    ball_speed_y = min(ball_speed_y + 1, max_speed_y)
+                    # print(f"dy={player_dy} ball_y_speed={ball_speed_y}")  #temp
+                else:
+                    ball_speed_y = max(ball_speed_y - 1, -max_speed_y)
+                    # print(f"dy={player_dy} ball_y_speed={ball_speed_y}")  #temp
+
+            elif player_dy * ball_speed_y < 0:              # opposite direction: slower
+                if ball_speed_y > 0:
+                    ball_speed_y = max(ball_speed_y - 1, min_speed_y)
+                    # print(f"dy={player_dy} ball_y_speed={ball_speed_y}")  #temp
+                else:
+                    ball_speed_y = min(ball_speed_y + 1, -min_speed_y)
+                    # print(f"dy={player_dy} ball_y_speed={ball_speed_y}")  #temp
         # print(f"Collided with: {key}")
     # collision checks end
 
