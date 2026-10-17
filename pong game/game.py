@@ -1,4 +1,5 @@
 import pygame
+import random
 
 pygame.init()
 
@@ -22,8 +23,10 @@ paddle_dict = {"player": player_paddle, "opponent" : opp_paddle}
 # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-ball-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 ball = pygame.Rect(0, 0, 14, 14)
 ball.center = (screen_width // 2, screen_height // 2)
-ball_speed_x = -7
-ball_speed_y = 5
+start_speed_x = 7
+start_speed_y = 5
+ball_speed_x = 0
+ball_speed_y = 0
 min_speed_y = 1
 max_speed_y = 12
 # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-ball end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
@@ -42,6 +45,8 @@ while running:
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-updates-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     player_dy = 0
     keys = pygame.key.get_pressed()
+    multiplier_x = random.choice([1, -1])
+    multiplier_y = random.choice([1, -1])
 
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-player paddle movements-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     if keys[pygame.K_w]:
@@ -75,11 +80,13 @@ while running:
         if ball.right > screen_width: 
             ball_speed_x *= -1 #temp condn
             player_score += 1
+            ball.center = (screen_width // 2, screen_height // 2)
             waiting = True
             print(f"player_score:{player_score}, opp_score: {opp_score}")
         elif ball.left < 0: 
             ball_speed_x *= -1 #temp condn
             opp_score += 1
+            ball.center = (screen_width // 2, screen_height // 2)
             waiting = True
             print(f"player_score:{player_score}, opp_score: {opp_score}")
         elif ball.top < 0 or ball.bottom > screen_height:
@@ -117,8 +124,10 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and waiting:
             waiting = False
+            ball_speed_x = multiplier_x * start_speed_x
+            ball_speed_y = multiplier_y * start_speed_y
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-events end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-draw-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
