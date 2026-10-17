@@ -6,9 +6,9 @@ screen_width = 1200
 screen_height = 700
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Pong")
-font = pygame.font.Font(None, size= 30)
+font = pygame.font.Font(None, size= 40)
 
-# -x-x-x-x-x-x-x-x-x-x-x-x-x-player_paddle-x-x-x-x-x-x-x-x-x-x-x-x-x-
+# -x-x-x-x-x-x-x-x-x-x-x-x-x-paddle-x-x-x-x-x-x-x-x-x-x-x-x-x-
 white = "#ffffff"
 player_paddle = pygame.Rect(12, 350, 7, 50)
 player_paddle.centery = screen.get_rect().centery
@@ -17,7 +17,7 @@ opp_paddle = pygame.Rect(0, 0, 7, 50)
 opp_paddle.right = screen_width - 12
 opp_paddle.centery = screen_height // 2
 paddle_dict = {"player": player_paddle, "opponent" : opp_paddle}
-# -x-x-x-x-x-x-x-x-x-x-x-x-x-x-player_paddle end-x-x-x-x-x-x-x-x-x-x-x-x-x-
+# -x-x-x-x-x-x-x-x-x-x-x-x-x-x-paddle end-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
 # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-ball-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 ball = pygame.Rect(0, 0, 14, 14)
@@ -34,6 +34,7 @@ opp_score = 0
 # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-points end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
 clock = pygame.time.Clock()
+waiting = True
 running = True
 
 while running:
@@ -41,6 +42,7 @@ while running:
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-updates-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     player_dy = 0
     keys = pygame.key.get_pressed()
+
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-player paddle movements-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     if keys[pygame.K_w]:
         player_dy -= paddle_speed
@@ -54,6 +56,7 @@ while running:
         player_paddle.bottom = screen_height
         player_dy = 0
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-player paddle movements end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
+
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-opponet paddle movements-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     if keys[pygame.K_UP]:
         opp_paddle.y -= paddle_speed
@@ -66,18 +69,23 @@ while running:
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-opponent paddle movements end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-ball movements-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
-    ball.x += ball_speed_x
-    ball.y += ball_speed_y
-    if ball.right > screen_width: 
-        ball_speed_x *= -1 #temp condn
-        player_score += 1
-        print(f"player_score:{player_score}, opp_score: {opp_score}")
-    if ball.left < 0: 
-        ball_speed_x *= -1 #temp condn
-        opp_score += 1
-        print(f"player_score:{player_score}, opp_score: {opp_score}")
-    if ball.top < 0 or ball.bottom > screen_height:
-        ball_speed_y *= -1
+    if not waiting:
+        ball.x += ball_speed_x
+        ball.y += ball_speed_y
+        if ball.right > screen_width: 
+            ball_speed_x *= -1 #temp condn
+            player_score += 1
+            waiting = True
+            print(f"player_score:{player_score}, opp_score: {opp_score}")
+        elif ball.left < 0: 
+            ball_speed_x *= -1 #temp condn
+            opp_score += 1
+            waiting = True
+            print(f"player_score:{player_score}, opp_score: {opp_score}")
+        elif ball.top < 0 or ball.bottom > screen_height:
+            ball_speed_y *= -1
+    # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-ball movements end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
+    
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-collision checks-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     collision = ball.collidedict(paddle_dict, True)
     if collision:
@@ -109,20 +117,29 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            waiting = False
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-events end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
     # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-draw-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     screen.fill(("#101010"))
     pygame.draw.rect(screen, white, player_paddle)
-    pygame.draw.ellipse(screen, white, ball)
     pygame.draw.rect(screen, white, opp_paddle)
-    # pygame.draw.circle(screen, white, (ball_x, ball_y), ball_radius)
+    if not waiting:
+        pygame.draw.ellipse(screen, white, ball)
+    # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-draw end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
+
+    # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-text-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
     player_text = font.render(str(player_score), True, white)
     opp_text = font.render(str(opp_score), True, white)
     screen.blit(player_text, (screen_width // 2 - 80, 30))
     screen.blit(opp_text, (screen_width // 2 + 60, 30))
-    pygame.display.flip()
+    if waiting:
+        waiting_text = font.render("Press Space to Start", True, white)
+        screen.blit(waiting_text, (screen_width//2 - 150, screen_height//2 - 19))
+    # -x-x-x-x-x-x-x-x-x-x-x-x-x-x-text end-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 
+    pygame.display.flip()
     clock.tick(60)
 
 pygame.quit()
